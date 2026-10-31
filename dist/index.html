@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DemigodzGaming MOBA Prototype</title>
+  <style>
+    :root {
+      --ally-color: #00A8E8;
+      --enemy-color: #E63946;
+      --jungle-color: #2D6A4F;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      overflow: hidden;
+      background: #0a0a0f;
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+    }
+    
+    #game canvas {
+      display: block;
+    }
+    
+    /* HUD Styles */
+    .hud {
+      position: absolute;
+      pointer-events: none;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+    
+    /* Left Joystick */
+    .joystick {
+      position: absolute;
+      width: 120px;
+      height: 120px;
+      left: 20px;
+      top: calc(50% - 60px);
+    }
+    
+    .joystick-base {
+      width: 120px;
+      height: 120px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .joystick-stick {
+      width: 60px;
+      height: 60px;
+      background: var(--ally-color);
+      border-radius: 30px;
+      pointer-events: none;
+      position: absolute;
+    }
+    
+    /* Right Skill Buttons */
+    .skill-buttons {
+      position: absolute;
+      right: 20px;
+      top: calc(50% - 100px);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    .skill-btn {
+      width: 80px;
+      height: 80px;
+      background: rgba(255,255,255,0.2);
+      border: none;
+      border-radius: 40px;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    
+    .skill-btn.ready {
+      background: var(--ally-color);
+    }
+    
+    .skill-btn.cooldown {
+      background: rgba(255,255,255,0.1);
+    }
+    
+    /* Basic Attack Button */
+    .basic-attack {
+      position: absolute;
+      right: 20px;
+      bottom: 20px;
+      width: 80px;
+      height: 80px;
+      background: rgba(255,255,255,0.2);
+      border: none;
+      border-radius: 40px;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    
+    .basic-attack.ready {
+      background: var(--ally-color);
+    }
+    
+    .basic-attack.cooldown {
+      background: rgba(255,255,255,0.1);
+    }
+    
+    /* HP/MP Bars */
+    .hp-bar {
+      position: absolute;
+      left: 20px;
+      top: 20px;
+      width: 200px;
+      height: 20px;
+      background: rgba(0,0,0,0.5);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    
+    .hp-fill {
+      width: 100%;
+      height: 100%;
+      background: var(--ally-color);
+      transition: width 0.1s;
+    }
+    
+    .mp-bar {
+      position: absolute;
+      left: 20px;
+      top: 50px;
+      width: 200px;
+      height: 10px;
+      background: rgba(0,0,0,0.5);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    
+    .mp-fill {
+      width: 100%;
+      height: 100%;
+      background: #4FC3F7;
+      transition: width 0.1s;
+    }
+    
+    /* Minimap */
+    .minimap {
+      position: absolute;
+      left: 20px;
+      bottom: 20px;
+      width: 150px;
+      height: 150px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 8px;
+    }
+    
+    /* Timer */
+    .timer {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      color: white;
+      font-size: 24px;
+      background: rgba(0,0,0,0.5);
+      padding: 12px 24px;
+      border-radius: 20px;
+    }
+    
+    /* KDA Display */
+    .kda {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      color: white;
+      font-size: 24px;
+      background: rgba(0,0,0,0.5);
+      padding: 12px 24px;
+      border-radius: 20px;
+    }
+    
+    /* Message */
+    .message {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 32px;
+      background: rgba(0,0,0,0.8);
+      padding: 24px 48px;
+      border-radius: 12px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    
+    .message.visible {
+      opacity: 1;
+    }
+  </style>
+  <script type="module" crossorigin src="./assets/index-Dzmo5mzy.js"></script>
+</head>
+<body>
+  <div id="game">
+    <canvas></canvas>
+    
+    <!-- HUD -->
+    <div class="hud">
+      <!-- Left Joystick -->
+      <div class="joystick">
+        <div class="joystick-base">
+          <div class="joystick-stick" id="joystick-stick"></div>
+        </div>
+      </div>
+      
+      <!-- Right Skill Buttons -->
+      <div class="skill-buttons">
+        <button class="skill-btn ready" data-slot="1" title="Skill 1">Q</button>
+        <button class="skill-btn ready" data-slot="2" title="Skill 2">W</button>
+        <button class="skill-btn ready" data-slot="3" title="Ultimate">E</button>
+      </div>
+      
+      <!-- Basic Attack -->
+      <button class="basic-attack ready" id="basic-attack">A</button>
+      
+      <!-- HP/MP Bars -->
+      <div class="hp-bar"><div class="hp-fill" style="width: 100%"></div></div>
+      <div class="mp-bar"><div class="mp-fill" style="width: 100%"></div></div>
+      
+      <!-- Minimap -->
+      <div class="minimap"></div>
+      
+      <!-- Timer -->
+      <div class="timer">0:00</div>
+      
+      <!-- KDA -->
+      <div class="kda">0/0/0</div>
+    </div>
+    
+    <!-- Message -->
+    <div class="message" id="message">Welcome to DemigodzGaming MOBA</div>
+  </div>
+  
+</body>
+</html>

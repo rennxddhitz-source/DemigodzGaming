@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DemigodzGaming MOBA Prototype</title>
+  <style>
+    :root {
+      --ally-color: #00A8E8;
+      --enemy-color: #E63946;
+      --jungle-color: #2D6A4F;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      overflow: hidden;
+      background: #0a0a0f;
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+    }
+    
+    #game canvas {
+      display: block;
+    }
+    
+    /* HUD Styles */
+    .hud {
+      position: absolute;
+      pointer-events: none;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+    
+    /* Left Joystick */
+    .joystick {
+      position: absolute;
+      width: 120px;
+      height: 120px;
+      left: 20px;
+      top: calc(50% - 60px);
+    }
+    
+    .joystick-base {
+      width: 120px;
+      height: 120px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .joystick-stick {
+      width: 60px;
+      height: 60px;
+      background: var(--ally-color);
+      border-radius: 30px;
+      pointer-events: none;
+      position: absolute;
+    }
+    
+    /* Right Skill Buttons */
+    .skill-buttons {
+      position: absolute;
+      right: 20px;
+      top: calc(50% - 100px);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    .skill-btn {
+      width: 80px;
+      height: 80px;
+      background: rgba(255,255,255,0.2);
+      border: none;
+      border-radius: 40px;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    
+    .skill-btn.ready {
+      background: var(--ally-color);
+    }
+    
+    .skill-btn.cooldown {
+      background: rgba(255,255,255,0.1);
+    }
+    
+    /* Basic Attack Button */
+    .basic-attack {
+      position: absolute;
+      right: 20px;
+      bottom: 20px;
+      width: 80px;
+      height: 80px;
+      background: rgba(255,255,255,0.2);
+      border: none;
+      border-radius: 40px;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    
+    .basic-attack.ready {
+      background: var(--ally-color);
+    }
+    
+    .basic-attack.cooldown {
+      background: rgba(255,255,255,0.1);
+    }
+    
+    /* HP/MP Bars */
+    .hp-bar {
+      position: absolute;
+      left: 20px;
+      top: 20px;
+      width: 200px;
+      height: 20px;
+      background: rgba(0,0,0,0.5);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    
+    .hp-fill {
+      width: 100%;
+      height: 100%;
+      background: var(--ally-color);
+      transition: width 0.1s;
+    }
+    
+    .mp-bar {
+      position: absolute;
+      left: 20px;
+      top: 50px;
+      width: 200px;
+      height: 10px;
+      background: rgba(0,0,0,0.5);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    
+    .mp-fill {
+      width: 100%;
+      height: 100%;
+      background: #4FC3F7;
+      transition: width 0.1s;
+    }
+    
+    /* Minimap */
+    .minimap {
+      position: absolute;
+      left: 20px;
+      bottom: 20px;
+      width: 150px;
+      height: 150px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 8px;
+    }
+    
+    /* Timer */
+    .timer {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      color: white;
+      font-size: 24px;
+      background: rgba(0,0,0,0.5);
+      padding: 12px 24px;
+      border-radius: 20px;
+    }
+    
+    /* KDA Display */
+    .kda {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      color: white;
+      font-size: 24px;
+      background: rgba(0,0,0,0.5);
+      padding: 12px 24px;
+      border-radius: 20px;
+    }
+    
+    /* Message */
+    .message {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 32px;
+      background: rgba(0,0,0,0.8);
+      padding: 24px 48px;
+      border-radius: 12px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    
+    .message.visible {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="game">
+    <canvas></canvas>
+    
+    <!-- HUD -->
+    <div class="hud">
+      <!-- Left Joystick -->
+      <div class="joystick">
+        <div class="joystick-base">
+          <div class="joystick-stick" id="joystick-stick"></div>
+        </div>
+      </div>
+      
+      <!-- Right Skill Buttons -->
+      <div class="skill-buttons">
+        <button class="skill-btn ready" data-slot="1" title="Skill 1">Q</button>
+        <button class="skill-btn ready" data-slot="2" title="Skill 2">W</button>
+        <button class="skill-btn ready" data-slot="3" title="Ultimate">E</button>
+      </div>
+      
+      <!-- Basic Attack -->
+      <button class="basic-attack ready" id="basic-attack">A</button>
+      
+      <!-- HP/MP Bars -->
+      <div class="hp-bar"><div class="hp-fill" style="width: 100%"></div></div>
+      <div class="mp-bar"><div class="mp-fill" style="width: 100%"></div></div>
+      
+      <!-- Minimap -->
+      <div class="minimap"></div>
+      
+      <!-- Timer -->
+      <div class="timer">0:00</div>
+      
+      <!-- KDA -->
+      <div class="kda">0/0/0</div>
+    </div>
+    
+    <!-- Message -->
+    <div class="message" id="message">Welcome to DemigodzGaming MOBA</div>
+  </div>
+  
+  <script type="module">
+    // Simple game loop for MOBA prototype
+    const canvas = document.querySelector('canvas');
+    const ctx = canvas.getContext('2d');
+    const messageEl = document.getElementById('message');
+    
+    // Resize canvas
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+    
+    // Player state
+    const player = {
+      x: canvas.width / 2,
+      y: canvas.height / 2,
+      speed: 5,
+      hp: 1000,
+      maxHp: 1000,
+      mp: 500,
+      maxMp: 500,
+      level: 1,
+      gold: 500,
+      xp: 0,
+      xpToLevel: 600
+    };
+    
+    // Game state
+    let gameTime = 0;
+    let isRunning = true;
+    
+    // Input - joystick
+    const joystick = { x: 0, y: 0, active: false };
+    const joystickStick = document.querySelector('.joystick-stick');
+    const joystickBase = document.querySelector('.joystick-base');
+    
+    // Skill cooldowns: [q, w, e] = [6s, 10s, 40s], basic attack cooldown
+    const skillCooldowns = [6000, 10000, 40000]; // in ms
+    const skillLastUsed = [0, 0, 0];
+    const basicCooldown = 600; // 0.6s
+    let basicLastUsed = 0;
+    
+    // Mana regen: 1.5%/sec of max
+    const manaRegenPerSecond = 0.015; // 1.5%
+    
+    // Minions and monsters
+    const minions = [];
+    const monsters = [];
+    
+    // Timer
+    let spawnTimer = 0;
+    
+    // Initialize minions
+    function spawnMinions(count) {
+      for (let i = 0; i < count; i++) {
+        minions.push({
+          x: 100 + Math.random() * 400,
+          y: 100 + Math.random() * 300,
+          hp: 100 + i * 20,
+          maxHp: 100 + i * 20,
+          rewardGold: 15 + i * 5,
+          rewardXp: 60 + i * 10
+        });
+      }
+    }
+    spawnMinions(10);
+    
+    // Initialize jungle monster
+    monsters.push({
+      x: 500,
+      y: 300,
+      type: 'turtle',
+      hp: 500,
+      maxHp: 500,
+      gold: 300,
+      xp: 200
+    });
+    
+    // Game loop
+    function gameLoop() {
+      if (!isRunning) return;
+      
+      // Time delta
+      const dt = 16; // approx 60fps
+      gameTime += dt;
+      spawnTimer += dt;
+      
+      // Update player position based on joystick
+      if (joystick.active) {
+        player.x += joystick.x * player.speed * (dt / 16);
+        player.y += joystick.y * player.speed * (dt / 16);
+        
+        // Keep player in bounds
+        player.x = Math.max(50, Math.min(canvas.width - 50, player.x));
+        player.y = Math.max(50, Math.min(canvas.height - 50, player.y));
+      }
+      
+      // Mana regen
+      player.mp = Math.min(player.maxMp, player.mp + manaRegenPerSecond * player.maxMp * (dt / 1000));
+      
+      // Check minion collisions & last-hit
+      minions.forEach(minion => {
+        const dx = player.x - minion.x;
+        const dy = player.y - minion.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        
+        if (dist < 50) {
+          // Basic attack
+          const now = Date.now();
+          if (now - basicLastUsed > basicCooldown) {
+            // Deal damage
+            minion.hp -= player.level * 50; // Simple damage formula
+            basicLastUsed = now;
+            
+            if (minion.hp <= 0) {
+              player.gold += minion.rewardGold;
+              player.xp += minion.rewardXp;
+              // Remove minion and spawn new one
+              minion.x = -100;
+              minion.y = -100;
+            }
+          }
+        }
+      });
+      
+      // Level up
+      if (player.xp >= player.xpToLevel) {
+        player.level++;
+        player.maxHp += 150;
+        player.hp = player.maxHp;
+        player.maxMp += 100;
+        player.mp = player.maxMp;
+        player.xpToLevel = player.level * 300; // Balancing: XP needed per level
+        addMessage(`Level up! Now level ${player.level}`);
+      }
+      
+      // Monster interaction
+      monsters.forEach(monster => {
+        const dx = player.x - monster.x;
+        const dy = player.y - monster.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        
+        if (dist < 80) {
+          const now = Date.now();
+          if (now - basicLastUsed > basicCooldown) {
+            monster.hp -= player.level * 50;
+            basicLastUsed = now;
+            
+            if (monster.hp <= 0) {
+              player.gold += monster.gold;
+              player.xp += monster.xp;
+              addMessage(`Secured Objective! +${monster.gold} gold, +${monster.xp} XP`);
+              // Respawn monster after some time
+              monster.hp = monster.maxHp;
+              monster.x = 500 + Math.random() * 200;
+              monster.y = 300 + Math.random() * 200;
+            }
+          }
+        }
+      });
+      
+      // Clear minions that are off-screen
+      minions.forEach((m, i) => {
+        if (m.x < -100 || m.x > canvas.width + 100 || m.y < -100 || m.y > canvas.height + 100) {
+          minions.splice(i, 1);
+        }
+      });
+      
+      // Draw
+      ctx.fillStyle = '#0a0a0f';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw player (hero)
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, 30, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Draw minions
+      minions.forEach(minion => {
+        ctx.fillStyle = '#FFD700';
+        ctx.beginPath();
+        ctx.arc(minion.x, minion.y, 15, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      
+      // Draw monster
+      ctx.fillStyle = '#2D6A4F';
+      ctx.beginPath();
+      ctx.arc(monsters[0].x, monsters[0].y, 25, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Draw HP bar
+      ctx.fillStyle = 'rgba(255,255,255,0.8)';
+      ctx.fillRect(20, 20, 200, 20);
+      ctx.fillStyle = '#FF4444';
+      ctx.fillRect(20, 20, (player.hp / player.maxHp) * 200, 20);
+      
+      // Draw MP bar
+      ctx.fillStyle = 'rgba(255,255,255,0.8)';
+      ctx.fillRect(20, 50, 200, 10);
+      ctx.fillStyle = '#4FC3F7';
+      ctx.fillRect(20, 50, (player.mp / player.maxMp) * 200, 10);
+      
+      // Draw timer
+      const minutes = Math.floor(gameTime / 60000);
+      const seconds = Math.floor((gameTime % 60000) / 1000);
+      ctx.fillStyle = 'white';
+      ctx.font = '20px Segoe UI';
+      ctx.fillText(`${minutes}:${seconds.toString().padStart(2, '0')}`, canvas.width - 100, 40);
+    }
+    
+    // Add message
+    function addMessage(text) {
+      messageEl.textContent = text;
+      messageEl.classList.add('visible');
+      setTimeout(() => {
+        messageEl.classList.remove('visible');
+      }, 3000);
+    }
+    
+    // Input - Joystick
+    joystickBase.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      joystick.active = true;
+    });
+    
+    joystickBase.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      joystick.active = false;
+      joystickStick.style.transform = 'translate(0, 0)';
+    });
+    
+    joystickBase.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      if (!joystick.active) return;
+      
+      const rect = joystickBase.getBoundingClientRect();
+      const touch = e.touches[0];
+      const x = touch.clientX - rect.left - 60; // 60px = stick radius
+      const y = touch.clientY - rect.top - 60;
+      
+      const distance = Math.sqrt(x * x + y * y);
+      const maxDistance = 60;
+      
+      let normX = 0, normY = 0;
+      if (distance > maxDistance) {
+        normX = (x / distance) * maxDistance;
+        normY = (y / distance) * maxDistance;
+      } else {
+        normX = x;
+        normY = y;
+      }
+      
+      joystick.x = normX / maxDistance;
+      joystick.y = normY / maxDistance;
+      joystickStick.style.transform = `translate(${normX}px, ${normY}px)`;
+    });
+    
+    // Keyboard fallback
+    document.addEventListener('keydown', (e) => {
+      switch(e.key) {
+        case 'ArrowUp': case 'w': case 'W':
+          joystick.y = -1;
+          break;
+        case 'ArrowDown': case 's': case 'S':
+          joystick.y = 1;
+          break;
+        case 'ArrowLeft': case 'a': case 'A':
+          joystick.x = -1;
+          break;
+        case 'ArrowRight': case 'd': case 'D':
+          joystick.x = 1;
+          break;
+      }
+    });
+    
+    document.addEventListener('keyup', (e) => {
+      switch(e.key) {
+        case 'ArrowUp': case 'w': case 'W':
+        case 'ArrowDown': case 's': case 'S':
+          joystick.y = 0;
+          break;
+        case 'ArrowLeft': case 'a': case 'A':
+        case 'ArrowRight': case 'd': case 'D':
+          joystick.x = 0;
+          break;
+      }
+    });
+    
+    // Skill buttons
+    document.querySelectorAll('.skill-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const slot = parseInt(btn.dataset.slot);
+        const now = Date.now();
+        const cooldown = skillCooldowns[slot - 1];
+        
+        if (now - skillLastUsed[slot - 1] > cooldown) {
+          // Use skill
+          skillLastUsed[slot - 1] = now;
+          addMessage(`Skill ${slot} used! Cooldown: ${(cooldown/1000)}s`);
+          
+          // Visual effect - just change button state temporarily
+          btn.classList.remove('ready');
+          btn.classList.add('cooldown');
+          
+          setTimeout(() => {
+            btn.classList.add('ready');
+            btn.classList.remove('cooldown');
+          }, cooldown);
+        }
+      });
+    });
+    
+    // Basic attack
+    document.getElementById('basic-attack').addEventListener('click', () => {
+      const now = Date.now();
+      if (now - basicLastUsed > basicCooldown) {
+        basicLastUsed = now;
+        // Auto-attack logic handled in gameLoop collision detection
+        addMessage('Basic attack!');
+      }
+    });
+    
+    // Start game loop
+    setInterval(gameLoop, 16);
+    
+    // Initial message
+    addMessage('Spawned in Fountain! Gold: 500, Level 1');
+  </script>
+</body>
+</html>
