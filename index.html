@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MOBA Arena Prototyp</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            overflow: hidden;
+            background: #1e1e32;
+            touch-action: none;
+            user-select: none;
+        }
+        
+        #gameContainer {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        .joystick {
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            left: 40px;
+            bottom: 40px;
+            pointer-events: none;
+        }
+        
+        .joystick-base {
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            border-radius: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .joystick-stick {
+            width: 60px;
+            height: 60px;
+            background: #00A8E8;
+            border-radius: 30px;
+            pointer-events: all;
+            transform: translate(0,0);
+            transition: transform 0.1s;
+        }
+        
+        .joystick-active .joystick-stick {
+            transform: translate(-50%, -50%) scale(1.2);
+        }
+        
+        .skill-buttons {
+            position: absolute;
+            right: 40px;
+            bottom: 40px;
+            display: flex;
+            gap: 12px;
+            pointer-events: none;
+        }
+        
+        .skill-button {
+            width: 60px;
+            height: 60px;
+            background: rgba(45, 106, 79, 0.8);
+            border: 3px solid #2D6A4F;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: all;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        .skill-button.unready {
+            opacity: 0.5;
+        }
+        
+        .skill-button.basic {
+            background: rgba(0, 168, 232, 0.9);
+        }
+        
+        .skill-button.ultimate {
+            background: rgba(230, 57, 70, 0.9);
+            width: 80px;
+            height: 80px;
+            border-radius: 16px;
+            font-size: 32px;
+        }
+        
+        .basic-attacks {
+            position: absolute;
+            right: 120px;
+            bottom: 40px;
+            display: flex;
+            gap: 12px;
+            pointer-events: none;
+        }
+        
+        .basic-attack-btn {
+            width: 60px;
+            height: 60px;
+            background: rgba(255,255,255,0.2);
+            border: 2px solid #fff;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: all;
+            color: white;
+            font-size: 18px;
+        }
+        
+        .hp-bar {
+            position: absolute;
+            width: 100px;
+            height: 8px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 4px;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            pointer-events: none;
+        }
+        
+        .hp-fill {
+            height: 100%;
+            width: 100%;
+            background: #ff4444;
+            border-radius: 4px;
+            transition: width 0.1s;
+        }
+        
+        .mana-bar {
+            position: absolute;
+            width: 100px;
+            height: 6px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 3px;
+            bottom: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            pointer-events: none;
+        }
+        
+        .mana-fill {
+            height: 100%;
+            width: 100%;
+            background: #4488ff;
+            border-radius: 3px;
+            transition: width 0.1s;
+        }
+        
+        .minimap {
+            position: absolute;
+            width: 150px;
+            height: 150px;
+            left: 20px;
+            top: 20px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 8px;
+            overflow: hidden;
+            pointer-events: none;
+        }
+        
+        .minimap-inner {
+            width: 200%;
+            height: 200%;
+            transform: scale(0.5);
+        }
+        
+        .status-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 8px;
+            color: white;
+            min-width: 200px;
+        }
+        
+        .status-panel h3 {
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        
+        .status-panel div {
+            margin: 5px 0;
+            font-size: 12px;
+        }
+        
+        .kda-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 8px;
+            color: white;
+            min-width: 150px;
+            text-align: right;
+        }
+        
+        .objective-indicator {
+            position: absolute;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(45, 106, 79, 0.8);
+            padding: 8px 16px;
+            border-radius: 20px;
+            color: white;
+            font-size: 12px;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer"></div>
+    
+    <!-- Virtual Joystick -->
+    <div class="joystick" id="joystick">
+        <div class="joystick-base">
+            <div class="joystick-stick" id="joystickStick"></div>
+        </div>
+    </div>
+    
+    <!-- Skill Buttons -->
+    <div class="skill-buttons" id="skillButtons">
+        <div class="skill-button basic" data-skill="basic1" id="skill1">Q</div>
+        <div class="skill-button basic" data-skill="basic2" id="skill2">W</div>
+        <div class="skill-button ultimate" data-skill="ultimate" id="skill3">E</div>
+    </div>
+    
+    <!-- Basic Attack Button -->
+    <div class="basic-attacks" id="basicAttack">
+        <div class="basic-attack-btn">A</div>
+    </div>
+    
+    <!-- Minimap -->
+    <div class="minimap" id="minimap">
+        <canvas class="minimap-inner" id="minimapCanvas" width="300" height="300"></canvas>
+    </div>
+    
+    <!-- Status Panel -->
+    <div class="status-panel" id="statusPanel">
+        <h3>Player Status</h3>
+        <div>Level: <span id="playerLevel">1</span></div>
+        <div>HP: <span id="playerHP">100%</span></span></div>
+        <div>MP: <span id="playerMP">100%</span></div>
+        <div>Gold: <span id="playerGold">500</span></div>
+    </div>
+    
+    <!-- KDA Panel -->
+    <div class="kda-panel" id="kdaPanel">
+        <div>K/D/A</div>
+        <div id="kills">0/0</div>
+        <div id="deaths">0</div>
+        <div id="assists">0</div>
+    </div>
+    
+    <!-- Objective Indicator -->
+    <div class="objective-indicator" id="objectiveIndicator">River Objective Available</div>
+    
+    <script type="module">
+        import { CONFIG, PALETTE, GAME_STATE, Player, Minion, Tower, GameManager } from './index.js';
+        
+        // Initialize Phaser game
+        const config = {
+            type: Phaser.AUTO,
+            width: window.innerWidth,
+            height: window.innerHeight,
+            parent: 'gameContainer',
+            physics: {
+                default: 'arcade',
+                arcade: {
+                    gravity: { y: 0 },
+                    debug: false
+                }
+            },
+            scene: {
+                preload: preload,
+                create: create,
+                update: update
+            }
+        };
+        
+        const game = new Phaser.Game(config);
+        
+        // Phaser variables
+        let joystickActive = false;
+        let joystickX = 0;
+        let joystickY = 0;
+        let lastActionTime = 0;
+        
+        function preload() {
+            // No assets needed for prototype - using simple shapes
+        }
+        
+        function create() {
+            // Initialize game manager
+            window.gameManager = new GameManager();
+            
+            // Set up players
+            const allyPlayers = window.gameManager.players.filter(p => p.isAlly);
+            const enemyPlayers = window.gameManager.players.filter(p => !p.isAlly);
+            
+            // Set up keyboard controls
+            const cursors = this.input.keyboard.createCursorKeys();
+            
+            // Joystick touch events
+            const joystick = document.getElementById('joystick');
+            const joystickStick = document.getElementById('joystickStick');
+            
+            let touchX = joystick.offsetLeft;
+            let touchY = joystick.offsetTop;
+            
+            // joystickcontainer = document.getElementById('joystick');
+            joystick.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                joystickActive = true;
+                updateJoystick(e.touch);
+            });
+            
+            joystick.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                if (joystickActive) {
+                    updateJoystick(e.touch);
+                }
+            });
+            
+            joystick.addEventListener('touchend', () => {
+                joystickActive = false;
+                joystickX = 0;
+                joystickY = 0;
+                joystickStick.style.transform = 'translate(0, 0)';
+            });
+            
+            function updateJoystick(touch) {
+                const rect = joystick.getBoundingClientRect();
+                const x = touch.clientX - rect.left - rect.width / 2;
+                const y = touch.clientY - rect.top - rect.height / 2;
+                
+                const maxDist = rect.width / 2 - 30;
+                const dist = Math.sqrt(x * x + y * y);
+                
+                let stickX = x;
+                let stickY = y;
+                
+                if (dist > maxDist) {
+                    const angle = Math.atan2(y, x);
+                    stickX = Math.cos(angle) * maxDist;
+                    stickY = Math.sin(angle) * maxDist;
+                }
+                
+                joystickX = stickX / maxDist; // Normalized -1 to 1
+                joystickY = stickY / maxDist; // Normalized -1 to 1
+                
+                joystickStick.style.transform = `translate(${stickX}px, ${stickY}px)`;
+            }
+            
+            // Skill button events
+            document.getElementById('skill1').addEventListener('click', () => {
+                const now = Date.now() / 1000;
+                if (now - lastActionTime > 0.1) {
+                    // Find player and use skill
+                    const player = allyPlayers[0]; // Simplified - use first ally
+                    if (player && player.useSkill('basic1')) {
+                        lastActionTime = now;
+                    }
+                }
+            });
+            
+            document.getElementById('skill2').addEventListener('click', () => {
+                const now = Date.now() / 1000;
+                if (now - lastActionTime > 0.1) {
+                    const player = allyPlayers[0];
+                    if (player && player.useSkill('basic2')) {
+                        lastActionTime = now;
+                    }
+                }
+            });
+            
+            document.getElementById('skill3').addEventListener('click', () => {
+                const now = Date.now() / 1000;
+                if (now - lastActionTime > 0.1) {
+                    const player = allyPlayers[0];
+                    if (player && player.useSkill('ultimate')) {
+                        lastActionTime = now;
+                    }
+                }
+            });
+            
+            // Basic attack
+            document.getElementById('basicAttack').addEventListener('click', () => {
+                const now = Date.now() / 1000;
+                if (now - lastActionTime > 0.2) {
+                    const player = allyPlayers[0];
+                    if (player) {
+                        // Find nearest enemy
+                        const enemy = enemyPlayers.find(p => p.alive);
+                        if (enemy) {
+                            player.basicAttack(enemy);
+                        }
+                    }
+                    lastActionTime = now;
+                }
+            });
+            
+            // Minimap setup
+            const minimapCanvas = document.getElementById('minimapCanvas');
+            const minimapCtx = minimapCanvas.getContext('2d');
+            
+            function drawMinimap() {
+                // Clear minimap
+                minimapCtx.fillStyle = '#1e1e32';
+                minimapCtx.fillRect(0, 0, 300, 300);
+                
+                // Draw lanes
+                minimapCtx.fillStyle = '#00A8E8';
+                minimapCtx.fillRect(50, 125, 200, 10); // Top lane
+                
+                minimapCtx.fillStyle = '#E63946';
+                minimapCtx.fillRect(125, 50, 10, 200); // Left lane
+                
+                minimapCtx.fillStyle = '#2D6A4F';
+                minimapCtx.fillRect(175, 175, 10, 10); // Jungle
+                
+                // Draw players
+                minimapCtx.fillStyle = '#00A8E8';
+                for (const player of allyPlayers) {
+                    const x = (player.x / 800) * 300 + 150;
+                    const y = (player.y / 600) * 300 + 150;
+                    minimapCtx.beginPath();
+                    minimapCtx.arc(x, y, 4, 0, Math.PI * 2);
+                    minimapCtx.fill();
+                }
+                
+                minimapCtx.fillStyle = '#E63946';
+                for (const player of enemyPlayers) {
+                    const x = (player.x / 800) * 300 + 150;
+                    const y = (player.y / 600) * 300 + 150;
+                    minimapCtx.beginPath();
+                    minimapCtx.arc(x, y, 4, 0, Math.PI * 2);
+                    minimapCtx.fill();
+                }
+                
+                // Draw objectives
+                const turtle = window.gameManager.objectives.find(o => o.type === 'turtle');
+                if (turtle && turtle.active) {
+                    minimapCtx.fillStyle = '#FFA500';
+                    const x = (turtle.x / 800) * 300 + 150;
+                    const y = (turtle.y / 600) * 300 + 150;
+                    minimapCtx.beginPath();
+                    minimapCtx.arc(x, y, 8, 0, Math.PI * 2);
+                    minimapCtx.fill();
+                }
+            }
+            
+            // Status panel update
+            function updateStatus() {
+                const player = allyPlayers[0];
+                if (player) {
+                    document.getElementById('playerLevel').textContent = player.level;
+                    document.getElementById('playerHP').textContent = Math.round((player.hp / player.maxHp) * 100) + '%';
+                    document.getElementById('playerMP').textContent = Math.round((player.mana / player.maxMana) * 100) + '%';
+                    document.getElementById('playerGold').textContent = player.gold;
+                    
+                    // KDA
+                    document.getElementById('kills').textContent = `${player.kills}/${player.deaths}`;
+                    document.getElementById('assists').textContent = player.assists;
+                }
+            }
+            
+            // Objective indicator
+            function updateObjectiveIndicator() {
+                const turtle = window.gameManager.objectives.find(o => o.type === 'turtle');
+                const indicator = document.getElementById('objectiveIndicator');
+                if (turtle && turtle.active) {
+                    indicator.textContent = 'River Objective: Turtle Available';
+                    indicator.style.display = 'block';
+                } else {
+                    indicator.style.display = 'none';
+                }
+            }
+            
+            // Game loop
+            let lastUpdate = 0;
+            
+            this.input.on('pointermove', (pointer) => {
+                // Keyboard alternative for joystick
+                if (cursors) {
+                    // Could use WASD or arrow keys
+                }
+            });
+            
+            // Touch controls for mobile
+            window.addEventListener('touchend', (e) => {
+                // Prevent default scrolling
+                e.preventDefault();
+            });
+            
+            // Main update loop
+            function update(time, delta) {
+                const now = time;
+                const deltaTime = now - lastUpdate;
+                lastUpdate = now;
+                
+                // Update game manager
+                window.gameManager.update(deltaTime);
+                
+                // Update player position based on joystick
+                const player = allyPlayers[0];
+                if (player && joystickActive) {
+                    // Move player based on joystick input
+                    const speed = 150; // pixels per second
+                    player.x += joystickX * speed * (deltaTime / 1000);
+                    player.y += joystickY * speed * (deltaTime / 1000);
+                    
+                    // Keep player in bounds
+                    player.x = Math.max(50, Math.min(750, player.x));
+                    player.y = Math.max(50, Math.min(550, player.y));
+                }
+                
+                // Update minimap
+                drawMinimap();
+                
+                // Update status
+                updateStatus();
+                
+                // Update objective indicator
+                updateObjectiveIndicator();
+                
+                // Check for last hits (minions near player)
+                const player = allyPlayers[0];
+                if (player) {
+                    const minionsInRange = window.gameManager.minions.filter(m => 
+                        Math.abs(m.x - player.x) < 100 && Math.abs(m.y - player.y) < 100 && m.alive
+                    );
+                    
+                    // Check for last hit - if player clicks on minion
+                    if (minionsInRange.length > 0) {
+                        const minion = minionsInRange[0];
+                        // Simple last hit detection
+                        if (player.gold >= MINION_WAVE.goldPerLastHit) {
+                            // Could auto-last-hit or require player input
+                        }
+                    }
+                }
+                
+                // Check win condition
+                if (window.gameManager.timer <= 0) {
+                    // End game
+                    alert(`Game Over! ${window.gameManager.determineWinner()} wins!`);
+                }
+            }
+            
+            this.time.loop({ time: 16.67, callback: update, callbackScope: this, loop: true });
+        }
+        
+        function update(time, delta) {
+            // Empty - using time.loop above
+        }
+    </script>
+</body>
+</html>
